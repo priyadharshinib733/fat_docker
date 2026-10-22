@@ -1,0 +1,89 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Industrial Predictive Maintenance</title>
+<style>
+body{font-family:Arial;background:#eef2f7;color:#172033;margin:0;padding:24px}
+h1{color:#12345a}
+.cards{display:flex;flex-wrap:wrap;gap:12px}
+.card{background:white;padding:18px;border-radius:10px;flex:1;min-width:150px}
+table{width:100%;background:white;border-collapse:collapse;margin-top:18px}
+th,td{padding:11px;border:1px solid #dbe2ea;text-align:left}
+th{background:#12345a;color:white}
+.warning{color:#c62828;font-weight:bold}
+select{padding:9px;margin:8px 8px 8px 0}
+</style>
+</head>
+<body>
+<h1>Industrial Predictive Maintenance Dashboard</h1>
+<p>Equipment monitoring | Sensor alerts | Maintenance analytics</p>
+
+<div class="cards">
+<div class="card">Total Machines<h2 id="total">5</h2></div>
+<div class="card">Operational Machines<h2 id="operational">0</h2></div>
+<div class="card">Total Downtime<h2 id="downtime">0 hours</h2></div>
+<div class="card">Highest Risk<h2 id="risk">-</h2></div>
+</div>
+
+<label>Status:</label>
+<select id="status" onchange="render()">
+<option value="All">All statuses</option>
+<option>Operational</option><option>Warning</option><option>Stopped</option>
+</select>
+<label>Production unit:</label>
+<select id="unit" onchange="render()">
+<option value="All">All units</option>
+<option>Assembly</option><option>Packaging</option><option>Machining</option>
+</select>
+
+<h2>Equipment Monitoring</h2>
+<table>
+<thead><tr><th>Machine</th><th>Unit</th><th>Hours</th><th>Temp °C</th>
+<th>Vibration mm/s</th><th>Status</th><th>Maintenance Due</th><th>Downtime h</th></tr></thead>
+<tbody id="machines"></tbody>
+</table>
+
+<h2>Maintenance Priority</h2>
+<table>
+<thead><tr><th>Machine</th><th>Severity</th><th>Reason</th><th>Recommended Action</th></tr></thead>
+<tbody id="priorities"></tbody>
+</table>
+
+<script>
+const data=[
+{id:"M-101",unit:"Assembly",hours:1820,temp:76,vib:3.1,status:"Operational",due:"2026-11-02",down:2},
+{id:"M-102",unit:"Machining",hours:2940,temp:88,vib:6.8,status:"Warning",due:"2026-10-25",down:8},
+{id:"M-103",unit:"Packaging",hours:1210,temp:69,vib:2.4,status:"Operational",due:"2026-11-15",down:1},
+{id:"M-104",unit:"Assembly",hours:3150,temp:84,vib:4.2,status:"Warning",due:"2026-10-24",down:12},
+{id:"M-105",unit:"Machining",hours:2670,temp:72,vib:8.1,status:"Stopped",due:"2026-10-22",down:16}
+];
+function risk(m){return (m.temp>80?3:0)+(m.vib>5?3:0)+(m.status==="Stopped"?4:0)+(m.hours>2800?2:0)}
+function render(){
+const status=document.getElementById("status").value;
+const unit=document.getElementById("unit").value;
+const visible=data.filter(m=>(status==="All"||m.status===status)&&(unit==="All"||m.unit===unit));
+document.getElementById("total").textContent=visible.length;
+document.getElementById("operational").textContent=visible.filter(m=>m.status==="Operational").length;
+document.getElementById("downtime").textContent=visible.reduce((s,m)=>s+m.down,0)+" hours";
+const ranked=[...visible].sort((a,b)=>risk(b)-risk(a));
+document.getElementById("risk").textContent=ranked.length?ranked[0].id:"-";
+document.getElementById("machines").innerHTML=visible.map(m=>{
+const alert=m.temp>80||m.vib>5;
+return `<tr><td>${m.id}</td><td>${m.unit}</td><td>${m.hours}</td>
+<td class="${m.temp>80?'warning':''}">${m.temp}${m.temp>80?' ⚠':''}</td>
+<td class="${m.vib>5?'warning':''}">${m.vib}${m.vib>5?' ⚠':''}</td>
+<td>${m.status}${alert?' ⚠':''}</td><td>${m.due}</td><td>${m.down}</td></tr>`;
+}).join("");
+document.getElementById("priorities").innerHTML=ranked.filter(m=>risk(m)>0).map(m=>
+`<tr><td>${m.id}</td><td>${risk(m)>=7?'Critical':risk(m)>=4?'High':'Medium'}</td>
+<td>${m.temp>80?'High temperature; ':''}${m.vib>5?'Excess vibration; ':''}${m.status==="Stopped"?'Machine stopped; ':''}${m.hours>2800?'High operating hours':''}</td>
+<td>${m.status==="Stopped"?'Inspect immediately':m.temp>80||m.vib>5?'Inspect sensors and schedule maintenance':'Schedule preventive inspection'}</td></tr>`
+).join("");
+}
+render();
+</script>
+</body>
+</html>
